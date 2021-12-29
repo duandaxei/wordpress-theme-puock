@@ -321,3 +321,8 @@ function pk_get_favicon_url($url)
 {
     return get_template_directory_uri() . '/inc/favicon.php?url=' . $url;
 }
+
+function pk_post_comment_is_closed()
+{
+    return pk_is_checked('close_post_comment',false);
+}
