@@ -223,7 +223,7 @@ function pk_go_link($url)
     if (pk_is_cur_site($url)) {
         return $url;
     }
-    return get_template_directory_uri() . '/inc/go.php?to=' . $url;
+    return PUOCK_ABS_URI . '/inc/go.php?to=' . $url;
 }
 
 //检测链接是否属于本站
@@ -288,7 +288,7 @@ function pk_get_comment_os_images($name)
 function pk_post_qrcode($url)
 {
     $file = '/cache/qr-' . md5($url) . '.png';
-    $filepath = get_template_directory() . $file;
+    $filepath = PUOCK_ABS_DIR . $file;
     if (!file_exists($filepath)) {
         QRcode::png($url, $filepath, QR_ECLEVEL_L, 7, 1);
     }
@@ -308,7 +308,7 @@ function pk_comment_captcha()
         'line' => true,     // 直线
         'curve' => true,   // 曲线
         'noise' => 1,   // 噪点背景
-        'fonts' => [get_template_directory() . '/assets/fonts/G8321-Bold.ttf']       // 字体
+        'fonts' => [PUOCK_ABS_DIR . '/assets/fonts/G8321-Bold.ttf']       // 字体
     ]);
     $result = $captch->create();
     $text = $result->getText();
@@ -322,7 +322,7 @@ add_action('wp_ajax_puock_comment_captcha', 'pk_comment_captcha');
 
 function pk_get_favicon_url($url)
 {
-    return get_template_directory_uri() . '/inc/favicon.php?url=' . $url;
+    return PUOCK_ABS_URI . '/inc/favicon.php?url=' . $url;
 }
 
 function pk_post_comment_is_closed()
@@ -342,6 +342,20 @@ function pk_compatible_githuber_md_katex($good_protocol_url, $original_url, $_co
 }
 
 //获取网站标题
-function pk_get_web_title(){
-    return pk_get_option('web_title',get_bloginfo('name'));
+function pk_get_web_title()
+{
+    return pk_get_option('web_title', get_bloginfo('name'));
+}
+
+// 获取链接的target属性
+function pk_link_target($echo = true)
+{
+    $target = "";
+    if (!pk_is_checked('page_ajax_load') && pk_is_checked('link_blank_content')) {
+        $target = "target=\"_blank\"";
+    }
+    if ($echo) {
+        echo $target;
+    }
+    return $target;
 }

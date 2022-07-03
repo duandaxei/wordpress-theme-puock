@@ -1,21 +1,14 @@
 <?php
 
-define('PUOCK_CUR_VER_STR', wp_get_theme()->get('Version'));
-define('PUOCK_CUR_VER', (float)PUOCK_CUR_VER_STR);
-define('PUOCK', 'puock');
-define('PUOCK_OPT', 'puock_options');
-
-$puock = 'Puock';
-
 add_action('after_setup_theme', 'puock_theme_setup');
 function puock_theme_setup()
 {
-    load_theme_textdomain(PUOCK, get_template_directory() . '/languages');
+    load_theme_textdomain(PUOCK, PUOCK_ABS_DIR . '/languages');
 }
 
-if (is_dir(get_template_directory() . '/inc/puock')) {
-    if (file_exists(get_template_directory() . '/inc/puock/fun.php')) {
-        require get_template_directory() . '/inc/puock/fun.php';
+if (is_dir(PUOCK_ABS_DIR . '/inc/puock')) {
+    if (file_exists(PUOCK_ABS_DIR . '/inc/puock/fun.php')) {
+        require PUOCK_ABS_DIR . '/inc/puock/fun.php';
     }
 }
 
@@ -29,23 +22,23 @@ function pk_ajax_resp_error($msg = 'fail', $data = null)
     return pk_ajax_resp($data, $msg, -1);
 }
 
-require get_template_directory() . '/inc/setting/options-framework.php';
-require get_template_directory() . '/inc/fun/comment-ajax.php';
-require get_template_directory() . '/inc/fun/widget.php';
-require get_template_directory() . '/inc/init.php';
-require get_template_directory() . '/inc/category-seo.php';
-require get_template_directory() . '/inc/fun/comment.php';
-require get_template_directory() . '/inc/fun/short-code.php';
-require get_template_directory() . '/inc/fun/opt.php';
-require get_template_directory() . '/inc/fun/post-meta.php';
-require get_template_directory() . '/inc/fun/sidebar.php';
-require get_template_directory() . '/inc/fun/post-tags.php';
-require get_template_directory() . '/inc/fun/comment-notify.php';
-require get_template_directory() . '/inc/user-agent-parse.php';
-require get_template_directory() . '/inc/phpqrcode.php';
-require get_template_directory() . '/inc/php-captcha.php';
+require PUOCK_ABS_DIR . '/inc/setting/options-framework.php';
+require PUOCK_ABS_DIR . '/inc/fun/comment-ajax.php';
+require PUOCK_ABS_DIR . '/inc/fun/widget.php';
+require PUOCK_ABS_DIR . '/inc/init.php';
+require PUOCK_ABS_DIR . '/inc/category-seo.php';
+require PUOCK_ABS_DIR . '/inc/fun/comment.php';
+require PUOCK_ABS_DIR . '/inc/fun/short-code.php';
+require PUOCK_ABS_DIR . '/inc/fun/opt.php';
+require PUOCK_ABS_DIR . '/inc/fun/post-meta.php';
+require PUOCK_ABS_DIR . '/inc/fun/sidebar.php';
+require PUOCK_ABS_DIR . '/inc/fun/post-tags.php';
+require PUOCK_ABS_DIR . '/inc/fun/comment-notify.php';
+require PUOCK_ABS_DIR . '/inc/user-agent-parse.php';
+require PUOCK_ABS_DIR . '/inc/phpqrcode.php';
+require PUOCK_ABS_DIR . '/inc/php-captcha.php';
 if (pk_is_checked('no_category')) {
-    require get_template_directory() . '/inc/no-category.php';
+    require PUOCK_ABS_DIR . '/inc/no-category.php';
 }
 
 /*Auth-Domains*/
@@ -63,7 +56,7 @@ function pk_toolbar_link($bar)
     $bar->add_node(array(
         'id' => 'theme-setting',
         'title' => '🎨 主题设置',
-        'href' => admin_url() . 'themes.php?page=options-framework'
+        'href' => admin_url() . 'themes.php?page=puock-options'
     ));
     $bar->add_node(array(
         'id' => 'theme-docs',
@@ -285,7 +278,7 @@ function pk_get_img_thumbnail_src($src, $width, $height)
     if ($width == null || $height == null) {
         return $src;
     }
-    return get_template_directory_uri() . "/timthumb.php?w={$width}&h={$height}&a=&zc=1&src=" . $src;
+    return PUOCK_ABS_URI . "/timthumb.php?w={$width}&h={$height}&a=&zc=1&src=" . $src;
 }
 
 //获取文章样式是否是卡片式
@@ -408,7 +401,7 @@ function oauth_qq_redirect_page($success = true, $info = '', $from_redirect = ''
         }
     } else {
         $_SESSION['error_info'] = $info;
-        echo "<html><script>window.location=\"" . get_template_directory_uri() . "/error.php\"</script></html>";
+        echo "<html><script>window.location=\"" . PUOCK_ABS_URI . "/error.php\"</script></html>";
     }
 }
 
@@ -784,14 +777,15 @@ function get_nav_menu_object($location)
 function pk_get_menu_obj_to_html($menus, &$out, $mobile = false, $dpath_cur = 1, $max_dpath = 2)
 {
     $child_class = $dpath_cur != 1 ? 'menu-item-child' : '';
+    $target = pk_link_target(false);
     foreach ($menus as $menu) {
         $classes = join(" ", $menu->classes);
         $cur = $menu->current ? 'menu-current' : '';
         $out .= "<li id='menu-item-{$menu->ID}' class='menu-item-{$menu->ID} {$classes} {$child_class} {$cur}'>";
         if (!$mobile) {
-            $out .= "<a href='{$menu->url}'>{$menu->title}";
+            $out .= "<a {$target} href='{$menu->url}'>{$menu->title}";
         } else {
-            $out .= '<span><a href="' . $menu->url . '">' . $menu->title . '</a>';
+            $out .= '<span><a '.$target.' href="' . $menu->url . '">' . $menu->title . '</a>';
         }
         if (count($menu->children) > 0) {
             if ($mobile) {
@@ -820,10 +814,10 @@ function get_category_child($parentId)
     $child = get_categories("child_of={$parentId}&hide_empty=0");
     $list = array();
     foreach ($child as $child_item) {
-        array_push($list, array(
+        $list[] = array(
             'url' => get_category_link($child_item),
             'item' => $child_item
-        ));
+        );
     }
     return $list;
 }
@@ -874,7 +868,7 @@ function pk_get_static_url()
             $url_pre = pk_get_option('custom_static_load_origin', '');
             break;
         default:
-            $url_pre = get_template_directory_uri();
+            $url_pre = PUOCK_ABS_URI;
     }
     return $url_pre;
 }
@@ -922,3 +916,25 @@ function pk_get_thumbnail_allow_sites()
     }
     return $sites;
 }
+
+//生成缩略图白名单文件名称
+function pk_get_thumbnail_allow_sites_filepath()
+{
+    return PUOCK_ABS_DIR . '/.tas.php';
+}
+
+//生成缩略图白名单文件
+function pk_generate_thumbnail_allow_sites_file()
+{
+    $sites = pk_get_thumbnail_allow_sites();
+    $template = "<?php \$ALLOWED_SITES = [\n";
+    if (count($sites) > 0) {
+        foreach ($sites as $site) {
+            $template .= "\t\"$site\",\n";
+        }
+    }
+    $template .= "];";
+    return file_put_contents(pk_get_thumbnail_allow_sites_filepath(), $template);
+}
+
+add_action('options-framework-saved', 'pk_generate_thumbnail_allow_sites_file');
