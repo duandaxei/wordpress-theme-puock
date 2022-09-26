@@ -128,6 +128,9 @@ class Puock {
             search.attr("class", "animated fade" + tag + "Left");
             $("#search-backdrop").attr("class", "modal-backdrop animated fade" + tag + "Right");
             search.attr("data-open", !open);
+            if(!open){
+                search.find("input").focus();
+            }
         }
         $(document).on("click", ".search-modal-btn", () => {
             toggle();
@@ -513,6 +516,18 @@ class Puock {
             $("#logo-dark").removeClass(dn);
             $("#logo-light").addClass(dn);
         }
+        $(".colorMode").each((_,e)=>{
+            const el = $(e);
+            let target;
+            if(el.prop("localName")==='i'){
+                target = el;
+            }else{
+                target = $(el).find("i");
+            }
+            if(target){
+                target.removeClass("czs-sun-l").removeClass("czs-moon-l").addClass(isLight ? "czs-sun-l" : "czs-moon-l");
+            }
+        })
         body.removeClass(isLight ? this.data.tag + "-dark" : this.data.tag + "-light");
         body.addClass(isLight ? this.data.tag + "-light" : this.data.tag + "-dark");
         this.localstorageToggle('light', isLight)
