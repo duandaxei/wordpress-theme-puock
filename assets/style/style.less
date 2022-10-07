@@ -264,6 +264,11 @@ body.pre-mac pre {
   z-index: 1050;
   overflow-y: scroll;
   height: 100vh;
+  background-color: var(--pk-bg-box);
+
+  .p-block{
+    box-shadow: none !important;
+  }
 
   .menus {
     padding: 40px 20px 20px 20px;
@@ -517,17 +522,11 @@ a:hover {
   }
 
   .colorMode {
-    &.czs-moon-l, .czs-moon-l {
+    &.fa-moon, .fa-moon {
       color: var(--pk-c-yellow);
     }
   }
 }
-
-[class^=czs-] {
-  position: relative;
-  top: 1px;
-}
-
 
 .carousel-control-next {
   justify-content: flex-end;
@@ -553,6 +552,7 @@ a:hover {
   padding: 15px;
   border-radius: 4px;
   box-sizing: border-box;
+  box-shadow: 2px 2px 5px var(--pk-c-block-shadow);
 
   img {
     max-width: 100%;
@@ -1649,7 +1649,7 @@ a:hover {
         background-color: var(--pk-c-primary);
         text-align: center;
 
-        [class^='czs'] {
+        [class^='fa'] {
           font-size: (@wh / 2);
           color: var(--pk-c-font);
           line-height: @wh;
@@ -1732,6 +1732,10 @@ a:hover {
       background-color: var(--pk-c-primary);
       color: var(--pk-c-light);
     }
+  }
+
+  .badge{
+    font-size: 85%;
   }
 }
 
