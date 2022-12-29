@@ -1,5 +1,8 @@
 <?php if (get_comments_number() == 0 && !comments_open() || pk_post_comment_is_closed()):echo ''; else: ?>
     <?php get_template_part('ad/comment', 'top') ?>
+<?php add_filter('pk_rb_float_actions',function ($content){
+        return $content.'<div data-to-area="#comments" class="p-block"><i class="fa-regular fa-comments puock-text"></i></div>';
+    }) ?>
     <div class="p-block" id="comments">
         <div>
             <span class="t-lg border-bottom border-primary puock-text pb-2"><i
@@ -18,6 +21,7 @@
                         <div>
                             <button class="btn btn-primary btn-ssm pk-modal-toggle" type="button"
                                     data-id="front-login"
+                                    data-once-load="true"
                                     title="快捷登录"
                                     data-url="<?php echo pk_ajax_url('pk_font_login_page', ['redirect' => get_permalink()]) ?>">
                                 <i
@@ -38,17 +42,17 @@
                             <?php $commentInfoCol = pk_is_checked('vd_comment') ? 3 : 4; ?>
                             <?php if (!is_user_logged_in()): ?>
                                 <input type="text" value="0" hidden name="comment-logged" id="comment-logged">
-                                <div class="col-12 col-sm-<?php echo $commentInfoCol ?>"><input type="text" id="author"
+                                <div class="col-12 col-sm-<?php echo $commentInfoCol ?>"><input type="text" id="comment_author"
                                                                                                 name="author"
                                                                                                 class="form-control form-control-sm t-sm"
                                                                                                 placeholder="<?php _e('昵称（必填）', PUOCK) ?>">
                                 </div>
-                                <div class="col-12 col-sm-<?php echo $commentInfoCol ?>"><input type="email" id="email"
+                                <div class="col-12 col-sm-<?php echo $commentInfoCol ?>"><input type="email" id="comment_email"
                                                                                                 name="email"
                                                                                                 class="form-control form-control-sm t-sm"
                                                                                                 placeholder="<?php _e('邮箱（必填）', PUOCK) ?>">
                                 </div>
-                                <div class="col-12 col-sm-<?php echo $commentInfoCol ?>"><input type="text" id="url"
+                                <div class="col-12 col-sm-<?php echo $commentInfoCol ?>"><input type="text" id="comment_url"
                                                                                                 name="url"
                                                                                                 class="form-control form-control-sm t-sm"
                                                                                                 placeholder="<?php _e('网站', PUOCK) ?>">
@@ -89,6 +93,7 @@
                                 <?php if (!is_user_logged_in() && pk_oauth_platform_count() > 0): ?>
                                     <div class="d-inline-block">
                                         <button class="btn btn-primary btn-ssm pk-modal-toggle" type="button"
+                                                data-once-load="true"
                                                 data-id="front-login"
                                                 title="快捷登录"
                                                 data-url="<?php echo pk_ajax_url('pk_font_login_page', ['redirect' => get_permalink()]) ?>">
@@ -101,8 +106,10 @@
                             <div>
                                 <button id="comment-cancel" type="button"
                                         class="btn btn-outline-dark d-none btn-ssm"><?php _e('取消', PUOCK) ?></button>
-                                <button id="comment-smiley" class="btn btn-outline-secondary btn-ssm" type="button"><i
-                                            class="fa-regular fa-face-smile t-md"></i></button>
+                                <button id="comment-smiley" class="btn btn-outline-secondary btn-ssm pk-modal-toggle" type="button"
+                                        title="表情" data-once-load="true"
+                                        data-url="<?php echo pk_ajax_url('pk_ajax_dialog_smiley') ?>">
+                                    <i class="fa-regular fa-face-smile t-md"></i></button>
                                 <button id="comment-submit" type="submit" class="btn btn-primary btn-ssm"><i
                                             class="fa-regular fa-paper-plane"></i>&nbsp;<?php _e('发布评论', PUOCK) ?>
                                 </button>
@@ -114,9 +121,7 @@
         <?php endif; ?>
         <?php if (pk_is_checked('comment_ajax')): ?>
             <div id="comment-ajax-load" class="text-center mt20 d-none">
-                <div class="spinner-grow text-primary" role="status">
-                    <span class="sr-only"><?php _e('载入中...', PUOCK) ?></span>
-                </div>
+                <?php echo pk_skeleton('comment',3) ?>
             </div>
         <?php endif; ?>
         <div id="post-comments">

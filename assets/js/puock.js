@@ -31,7 +31,8 @@ class Puock {
             val: null,
             replyId: null
         },
-        instance: {}
+        instance: {},
+        modalStorage: {}
     }
 
     // 全局一次加载或注册的事件
@@ -40,10 +41,18 @@ class Puock {
         $(document).on("click", ".fancybox", () => {
             return false;
         });
-        $(document).on("click", "#return-top-bottom>div", (e) => {
-            const to = $(this.ct(e)).attr("data-to");
-            const scroll_val = to === 'top' ? 0 : window.document.body.clientHeight;
-            $('html,body').animate({scrollTop: scroll_val}, 800)
+        $(document).on("click", "#rb-float-actions>div", (e) => {
+            const el = $(this.ct(e));
+            const to = el.data("to");
+            if (to) {
+                const scroll_val = to === 'top' ? 0 : window.document.body.clientHeight;
+                $('html,body').stop().animate({scrollTop: scroll_val}, 50)
+                return;
+            }
+            const toArea = el.data("to-area");
+            if (toArea) {
+                this.gotoArea(toArea)
+            }
         });
         $(document).on("click", ".colorMode", () => {
             this.modeChange(null, true);
@@ -71,6 +80,9 @@ class Puock {
         this.swiperOnceEvent()
         this.initModalToggle()
         layer.config({shade: 0.5})
+        console.log("\n %c Puock Theme %c https://github.com/Licoy/wordpress-theme-puock \n\n",
+            "color:#f1ab0e;background:#030307;padding:5px 0;border-top-left-radius:8px;border-bottom-left-radius:8px",
+            "background:#aa80ff;padding:5px 0;border-top-right-radius:8px;border-bottom-right-radius:8px");
     }
 
     pageInit() {
@@ -80,7 +92,6 @@ class Puock {
             if (this.data.params.use_post_menu) {
                 this.generatePostMenuHTML()
             }
-            this.generatePostQrcode()
         }
     }
 
@@ -331,10 +342,10 @@ class Puock {
         $(document).on("click", ".pk-menu-to", (e) => {
             const to = $(this.ct(e)).attr("href");
             const headerHeight = $("#header").innerHeight();
-            $("html, body").animate({
+            $("html, body").stop().animate({
                 scrollTop: ($(to).offset().top - headerHeight - 10) + "px"
             }, {
-                duration: 500,
+                duration: 50,
                 easing: "swing"
             });
             return false;
@@ -379,6 +390,14 @@ class Puock {
         });
     }
 
+    tooltipInit(el = $("[data-bs-toggle=\"tooltip\"]")) {
+        [...el].map(tooltipTriggerEl => {
+            new bootstrap.Tooltip(tooltipTriggerEl, {
+                placement: 'bottom', trigger: 'hover'
+            })
+        })
+    }
+
     pageChangeInit() {
         this.initReadProgress()
         this.modeInit();
@@ -386,7 +405,6 @@ class Puock {
         this.katexParse();
         this.initCodeHighlight();
         this.pageLinkBlankOpenInit()
-        this.generatePostQrcode();
         this.initGithubCard();
         this.keyUpHandle();
         this.loadHitokoto();
@@ -396,9 +414,7 @@ class Puock {
         if (this.data.params.use_post_menu) {
             this.generatePostMenuHTML()
         }
-        [...document.querySelectorAll('[data-toggle="tooltip"]')].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl, {
-            placement: 'bottom', trigger: 'hover'
-        }))
+        this.tooltipInit()
         $(".entry-content").viewer({
             navbar: false,
             url: this.data.params.main_lazy_img ? 'data-src' : 'src'
@@ -570,14 +586,6 @@ class Puock {
         }
     }
 
-    generatePostQrcode() {
-        //生成微信分享二维码
-        const wsEl = $("#wx-share");
-        const qrUrl = wsEl.attr("data-url");
-        wsEl.attr("data-original-title", `<p class='text-center t-sm mb-1 mt-1'>使用微信扫一扫</p><img width="180" class='mb-1' alt='微信二维码' src='${qrUrl}'/>`)
-    }
-
-
     localstorageToggle(name, val = null) {
         return val != null ? localStorage.setItem(name, val) : localStorage.getItem(name);
     }
@@ -587,16 +595,16 @@ class Puock {
             emailText = this.localstorageToggle("comment_email"),
             urlText = this.localstorageToggle("comment_url");
         if (authorText != null && emailText != null) {
-            $("#author").val(authorText);
-            $("#email").val(emailText);
-            $("#url").val(urlText);
+            $("#comment_author").val(authorText);
+            $("#comment_email").val(emailText);
+            $("#comment_url").val(urlText);
         }
     }
 
     setCommentInfo() {
-        this.localstorageToggle("comment_author", $("#author").val());
-        this.localstorageToggle("comment_email", $("#email").val());
-        this.localstorageToggle("comment_url", $("#url").val());
+        this.localstorageToggle("comment_author", $("#comment_author").val());
+        this.localstorageToggle("comment_email", $("#comment_email").val());
+        this.localstorageToggle("comment_url", $("#comment_url").val());
     }
 
     asyncCacheViews() {
@@ -698,10 +706,9 @@ class Puock {
         });
     }
 
-    gotoCommentArea(speed = 800) {
-        const top = $("#comments").offset().top - $("#header").height() - 10;
-        $('html,body').animate({scrollTop: top}, speed);
-        this.lazyLoadInit()
+    gotoArea(el, speed = 50) {
+        const top = $(el).offset().top - $("#header").height() - 10;
+        $('html,body').stop().animate({scrollTop: top}, speed);
     }
 
     pushAjaxCommentHistoryState(href) {
@@ -716,13 +723,13 @@ class Puock {
             let href = $(this.ct(e)).attr("href");
             this.pushAjaxCommentHistoryState(href);
             postCommentsEl.html(" ");
-            this.gotoCommentArea(200);
+            this.gotoArea("#comments");
             loadBox.removeClass('d-none');
             $.post(href, {}, (data) => {
                 postCommentsEl.html($(data).find("#post-comments"));
                 loadBox.addClass('d-none');
                 this.initCodeHighlight(false);
-                this.gotoCommentArea()
+                this.lazyLoadInit(postCommentsEl);
             }).error(() => {
                 location = href;
             });
@@ -743,7 +750,7 @@ class Puock {
     eventCommentPreSubmit() {
         $(document).on('submit', '#comment-form', (e) => {
             e.preventDefault();
-            if ($("#comment-logged").val() === '0' && ($.trim($("#author").val()) === '' || $.trim($("#email").val()) === '')) {
+            if ($("#comment-logged").val() === '0' && ($.trim($("#comment_author").val()) === '' || $.trim($("#comment_email").val()) === '')) {
                 this.toast('评论信息不能为空', TYPE_WARNING);
                 return;
             }
@@ -885,14 +892,10 @@ class Puock {
     }
 
     eventSmiley() {
-        const el = "#twemoji"
-        $(document).on('click', '#comment-smiley', () => {
-            $(el).modal("show");
-        });
         $(document).on('click', '.smiley-img', (e) => {
             const comment = $("#comment");
             comment.val(comment.val() + ' ' + $(this.ct(e)).attr("data-id") + ' ');
-            $(el).modal("hide");
+            layer.closeAll();
         })
     }
 
@@ -921,21 +924,38 @@ class Puock {
     initModalToggle() {
         $(document).on("click", ".pk-modal-toggle", (e) => {
             const el = $(this.ct(e));
-            const noTitle = el.attr("data-no-title") !== undefined;
-            const noPadding = el.attr("data-no-padding") !== undefined;
-            const title = el.attr("title") || el.attr("data-title") || '提示';
-            const url = el.attr("data-url");
-            this.getRemoteHtmlNode(url, (res) => {
-                const id = "pk-modal-" + (new Date()).getTime();
-                layer.open({
-                    type: 1,
-                    title: noTitle ? false : title,
-                    content: `<div id="${id}" style='${noPadding ? '' : 'padding: 20px'}' class='fs14'>${res}</div>`,
-                    shadeClose: true,
+            const noTitle = el.data("no-title") !== undefined;
+            const noPadding = el.data("no-padding") !== undefined;
+            const title = el.attr("title") || el.data("title") || '提示';
+            const url = el.data("url");
+            const onceLoad = el.data("once-load")
+            const id = SparkMD5.hash(url)
+            if (onceLoad && this.data.modalStorage[id]) {
+                this.modalLoadRender(id, this.data.modalStorage[id], title, noTitle, noPadding)
+            } else {
+                this.getRemoteHtmlNode(url, (res) => {
+                    if (onceLoad) {
+                        if (!this.data.modalStorage[id]) {
+                            this.data.modalStorage[id] = res;
+                        }
+                    }
+                    this.modalLoadRender(id, res, title, noTitle, noPadding)
                 })
-                this.lazyLoadInit($("#" + id));
-            })
+            }
         })
+    }
+
+    modalLoadRender(dataId, html, title, noTitle, noPadding) {
+        const id = "pk-modal-" + dataId;
+        layer.open({
+            type: 1,
+            title: noTitle ? false : title,
+            content: `<div id="${id}" style='${noPadding ? '' : 'padding: 20px'}' class='fs14'>${html}</div>`,
+            shadeClose: true,
+        })
+        const idEl = $("#" + id);
+        this.lazyLoadInit(idEl);
+        this.tooltipInit(idEl.find("[data-bs-toggle=\"tooltip\"]"));
     }
 
     eventPostMainBoxResize() {
