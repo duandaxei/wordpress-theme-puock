@@ -1039,21 +1039,28 @@ a:hover {
     font-size: 20px;
   }
 
-  .entry-content {
-    .fs14();
+  .entry-content,.entry-content-box {
+    font-size: 15px;
 
-    #post-main-content {
-      &.p-indent > p {
-        text-indent: 2rem;
+    &.p-indent > p {
+      text-indent: 2rem;
+    }
+
+    a:not(.btn,.fancybox,.no-icon) {
+      &:before {
+        content: "\f0c1";
+        font-family: var(--fa-style-family, "Font Awesome 6 Free");
+        margin-right: 3px;
+        font-weight: var(--fa-style, 900);
+        font-size: 12px;
+        display: none;
       }
+    }
 
-      a:not(.btn,.fancybox,.no-icon) {
-        &:before {
-          content: "\f0c1";
-          font-family: var(--fa-style-family, "Font Awesome 6 Free");
-          margin-right: 3px;
-          font-weight: var(--fa-style, 900);
-          font-size: 12px;
+    &.show-link-icon{
+      a:not(.btn,.fancybox,.no-icon){
+        &:before{
+          display: inline-block;
         }
       }
     }
@@ -1068,7 +1075,6 @@ a:hover {
     p {
       margin: 10px 0 !important;
       line-height: 2;
-      letter-spacing: 1px;
     }
 
     video {
@@ -1130,10 +1136,13 @@ a:hover {
     }
 
     code:not([class]) {
-      margin: 0 5px;
-      padding: 2px 5px;
+      margin: 2px 4px;
+      padding: 0 6px;
       border-radius: 4px;
       box-shadow: 0 1px 1px rgba(0, 0, 0, 0.125);
+      background-color: var(--pk-bg-body);
+      display: inline-block;
+      font-family: "Segoe UI", "Microsoft YaHei", "Hiragino Sans GB", "WenQuanYi Micro Hei", sans-serif;
     }
 
     img:not(.wp-smiley) {
