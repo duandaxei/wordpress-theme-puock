@@ -277,15 +277,15 @@ class Puock {
         }
     }
 
-    rippleInit(){
-        const args ={
+    rippleInit() {
+        const args = {
             debug: false,
             on: 'mousedown',
             opacity: 0.4,
             color: "var(--pk-c-light)",
             multi: false,
             duration: 0.6,
-            rate: function(pxPerSecond) {
+            rate: function (pxPerSecond) {
                 return pxPerSecond;
             },
             easing: 'linear'
@@ -383,14 +383,18 @@ class Puock {
         }
     }
 
-    lazyLoadInit(parent = null, el = '.lazyload') {
-        if (window.LazyLoad !== undefined) {
-            const elList = parent ? parent.find(el) : document.querySelectorAll([el, "[data-lazy=true]"]);
-            new window.LazyLoad(elList, {
-                root: null,
-                rootMargin: "0px",
-                threshold: 0
+    lazyLoadInit(parent = null, el = '.lazy') {
+        if(window.lozad){
+            const observer = lozad([el,'img[data-lazy="true"]'], {
+                rootMargin: '10px 0px',
+                threshold: 0.1,
+                enableAutoReload: true,
+                load:(el)=>{
+                    el.classList.add('loaded');
+                    el.src = el.getAttribute('data-src');
+                }
             });
+            observer.observe();
         }
     }
 
