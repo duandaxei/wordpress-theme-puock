@@ -38,122 +38,63 @@ function pk_shortcode_register()
 }
 
 //提示框部分
-function sc_tips_common($type, $attr, $content)
+function sc_tips($attr, $content, $tag)
 {
-    $icon = $attr['icon'] ?? '';
-    if(!empty($icon)){
-        $content = "<i class=\"{$icon} mr-1\"></i>".$content;
+    $type = str_replace('t-', '', $tag);
+    extract(shortcode_atts(array(
+        'icon' => '',
+        'outline' => false,
+        'class' => ''
+    ), $attr));
+    $_class = $class . ' alert alert-' . $type;
+    if (!empty($icon)) {
+        $content = "<i class=\"{$icon} mr-1\"></i>" . $content;
     }
-    return "<div class=\"alert alert-{$type}\">{$content}</div>";
-}
-
-
-
-function sc_tips_primary($attr, $content = null)
-{
-    global $shortCodeColors;
-    return sc_tips_common($shortCodeColors[0], $attr, $content);
-}
-
-function sc_tips_danger($attr, $content = null)
-{
-    global $shortCodeColors;
-    return sc_tips_common($shortCodeColors[1], $attr, $content);
-}
-
-function sc_tips_warning($attr, $content = null)
-{
-    global $shortCodeColors;
-    return sc_tips_common($shortCodeColors[2], $attr, $content);
-}
-
-function sc_tips_info($attr, $content = null)
-{
-    global $shortCodeColors;
-    return sc_tips_common($shortCodeColors[3], $attr, $content);
-}
-
-function sc_tips_success($attr, $content = null)
-{
-    global $shortCodeColors;
-    return sc_tips_common($shortCodeColors[4], $attr, $content);
-}
-
-function sc_tips_dark($attr, $content = null)
-{
-    global $shortCodeColors;
-    return sc_tips_common($shortCodeColors[5], $attr, $content);
+    if ($outline) {
+        $_class .= ' alert-outline';
+    }
+    return "<div class=\"{$_class}\">{$content}</div>";
 }
 
 foreach ($shortCodeColors as $sc_tips) {
-    add_shortcode('t-' . $sc_tips, 'sc_tips_' . $sc_tips);
+    add_shortcode('t-' . $sc_tips, 'sc_tips');
 }
 //按钮部分
-function sc_btn_common($type = 'primary', $attr = null, $content = null)
+function sc_btn($attr, $content, $tag)
 {
-    $href = isset($attr['href']) ? $attr['href'] : "javascript:void(0)";
+    $type = str_replace('btn-', '', $tag);
+    $href = $attr['href'] ?? "javascript:void(0)";
     if (pk_is_cur_site($href)) {
         return '<a href="' . $href . '" class="btn btn-sm sc-btn btn-' . $type . '">' . $content . '</a>';
     }
     return '<a target="_blank" rel="nofollow" href="' . pk_go_link($href) . '" class="btn btn-sm sc-btn btn-' . $type . '">' . $content . '</a>';
 }
 
-function sc_btn_primary($attr, $content = null)
-{
-    return sc_btn_common('primary', $attr, $content);
-}
-
-function sc_btn_danger($attr, $content = null)
-{
-    return sc_btn_common('danger', $attr, $content);
-}
-
-function sc_btn_warning($attr, $content = null)
-{
-    return sc_btn_common('warning', $attr, $content);
-}
-
-function sc_btn_info($attr, $content = null)
-{
-    return sc_btn_common('info', $attr, $content);
-}
-
-function sc_btn_success($attr, $content = null)
-{
-    return sc_btn_common('success', $attr, $content);
-}
-
-function sc_btn_dark($attr, $content = null)
-{
-    return sc_btn_common('dark', $attr, $content);
-}
-
-function sc_btn_link($attr, $content = null)
-{
-    return sc_btn_common('link', $attr, $content);
-}
-
 foreach (array_merge($shortCodeColors, array('link')) as $sc_btn) {
-    add_shortcode('btn-' . $sc_btn, 'sc_btn_' . $sc_btn);
+    add_shortcode('btn-' . $sc_btn, 'sc_btn');
 }
 
-//集成dplayer播放器
-function pk_dplayer_videos($attr, $content = null)
+//视频
+function pk_sc_video($attr, $content = null)
 {
     extract(shortcode_atts(array(
         'url' => '', 'href' => '',
         'autoplay' => false, 'type' => 'auto',
         'pic' => '', 'class' => '',
+        'ssl'=>false,
     ), $attr));
     if (empty($url) && empty($href)) {
-        return sc_tips_warning(null, '视频警告：播放链接不能为空');
+        return sc_tips(array('outline'=>true), '<span class="c-sub fs14">视频警告：播放链接不能为空</span>', 't-warning');
     }
     if (empty($url)) {
         $url = $href;
     }
-    $id = mt_rand(0, 9) . mt_rand(0, 9) . mt_rand(0, 9) . mt_rand(0, 9);
+    if(strpos($url, 'http://') === false && strpos($url, 'https://') === false){
+        $url = ($ssl ? 'https://' : 'http://') . $url;
+    }
     $auto = ($autoplay === 'true') ? 'true' : 'false';
-    if(pk_is_checked('dplayer')){
+    if (pk_is_checked('dplayer')) {
+        $id = mt_rand(0, 9) . mt_rand(0, 9) . mt_rand(0, 9) . mt_rand(0, 9);
         $out = "<div id='dplayer-{$id}' class='{$class}'></div>";
         $out .= "<script>$(function() {
             new DPlayer({
@@ -167,19 +108,19 @@ function pk_dplayer_videos($attr, $content = null)
             });
 })</script>";
         return $out;
-    }else{
-        $autoplay = $auto=='true' ? 'autoplay' : '';
-        return "<video src='$url' $autoplay controls></video>";
+    } else {
+        $autoplay = $auto == 'true' ? 'autoplay' : '';
+        return "<video $autoplay src=\"$url\" controls></video>";
     }
 }
+add_shortcode('video', 'pk_sc_video');
+add_shortcode('videos', 'pk_sc_video');
 
-add_shortcode('video', 'pk_dplayer_videos');
-add_shortcode('videos', 'pk_dplayer_videos');
 //解析音频链接
 function pk_music($attr, $content = null)
 {
     if (empty($content)) {
-        return sc_tips_warning(null, '音频警告：播放链接不能为空');
+        return sc_tips(array('outline' => true), '<span class="c-sub fs14">音频警告：播放链接不能为空</span>', 't-warning');
     }
     return '<div class="text-center"><audio class="mt-2" src="' . trim($content) . '" controls></audio></div>';
 }
@@ -207,7 +148,7 @@ function pk_reply_read($attr, $content = null)
     global $wpdb;
     $email = null;
     $user_id = (int)wp_get_current_user()->ID;
-    $msg = sc_tips_primary(null, "<i class='fa-regular fa-eye'></i>&nbsp;此处含有隐藏内容，请提交评论并审核通过刷新后即可查看！");
+    $msg = sc_tips(array('outline' => true), "<span class='c-sub fs14'><i class='fa-regular fa-eye'></i>&nbsp;此处含有隐藏内容，请提交评论并审核通过刷新后即可查看！</span>", 't-primary');
     if ($user_id > 0) {
         $email = get_userdata($user_id)->user_email;
         if ($email == get_bloginfo('admin_email')) {
@@ -234,7 +175,7 @@ add_shortcode('reply', 'pk_reply_read');
 //登录可见
 function pk_login_read($attr, $content = null)
 {
-    $msg = sc_tips_primary(null, "<i class='fa-regular fa-eye'></i>&nbsp;此处含有隐藏内容，登录后即可查看！");
+    $msg = sc_tips(array('outline' => true), "<span class='c-sub fs14'><i class='fa-regular fa-eye'></i>&nbsp;此处含有隐藏内容，登录后即可查看！</span>", 't-primary');
     return is_user_logged_in() ? do_shortcode($content) : $msg;
 }
 
@@ -251,7 +192,7 @@ function pk_login_email_read($attr, $content = null)
             }
         }
     }
-    return sc_tips_primary(null, "<i class='fa-regular fa-eye'></i>&nbsp;此处含有隐藏内容，需要登录并验证邮箱后即可查看！");
+    return sc_tips(array('outline' => true), "<span class='c-sub fs14'><i class='fa-regular fa-eye'></i>&nbsp;此处含有隐藏内容，需要登录并验证邮箱后即可查看！</span>", 't-primary');
 }
 
 add_shortcode('login_email', 'pk_login_email_read');
@@ -273,21 +214,22 @@ function pk_password_read($attr, $content = null)
     ), $attr));
     $out = '';
     $error = '';
+    if (empty(trim($desc))) {
+        $desc = "此处含有隐藏内容，需要正确输入密码后可见！";
+    }
+    $info = "<p class='fs14 c-sub'><i class='fa-regular fa-eye'></i>&nbsp;{$desc}</p>";
     if (isset($_REQUEST['pass'])) {
         if ($_REQUEST['pass'] == $pass) {
             return do_shortcode($content);
         } else {
-            $error = sc_tips_danger(null, "<i class='fa-regular fa-eye'></i>&nbsp;密码输入错误，请重新输入！");
+            $info .= "<p class='fs14 text-danger'><i class='fa-solid fa-triangle-exclamation'></i>&nbsp;您的密码输入错误，请核对后重新输入</p>";
         }
     }
-    if (empty(trim($desc))) {
-        $desc = "此处含有隐藏内容，需要正确输入密码后可见！";
-    }
-    $out .= "<div class=\"p-block pk-sc-password-red\">".sc_tips_primary(null, "<i class='fa-regular fa-eye'></i>&nbsp;{$desc}")
-        ."$error<form action=\"".get_permalink()."\" method=\"post\"><div class=\"row\"><div class=\"col-8 col-md-10\">"
-        ."<input type=\"password\" placeholder=\"请输入密码\" required class=\"form-control form-control-sm\" name=\"pass\"/>"
-        ."</div><div class=\"col-4 col-md-2 pl-0\"><button class=\"btn btn-sm btn-primary w-100\">立即查看</button></div></div></form>"
-        ."</div>";
+    $out .= "<div class='alert alert-primary alert-outline'>{$info}"
+        . "$error<form action=\"" . get_permalink() . "\" method=\"post\"><div class=\"row\"><div class=\"col-8 col-md-10\">"
+        . "<input type=\"password\" placeholder=\"请输入密码\" required class=\"form-control form-control-sm\" name=\"pass\"/>"
+        . "</div><div class=\"col-4 col-md-2 pl-0\"><button class=\"btn btn-sm btn-primary w-100\">立即查看</button></div></div></form>"
+        . "</div>";
     return $out;
 }
 
