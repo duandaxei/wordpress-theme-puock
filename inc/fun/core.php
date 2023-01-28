@@ -1,5 +1,8 @@
 <?php
 
+
+use Puock\Theme\classes\PuockClassLoad;
+
 add_action('after_setup_theme', 'puock_theme_setup');
 function puock_theme_setup()
 {
@@ -46,6 +49,7 @@ require_once PUOCK_ABS_DIR . '/inc/ajax/index.php';
 if (pk_is_checked('no_category')) {
     require_once PUOCK_ABS_DIR . '/inc/no-category.php';
 }
+$puock_class_load = new PuockClassLoad();
 
 /*Auth-Domains*/
 
@@ -367,7 +371,7 @@ function pk_get_img_thumbnail_src($src, $width, $height, $args = array())
         return $src;
     }
     if (pk_is_checked('thumbnail_rewrite_open')) {
-        return home_url() . "/timthumb/w_{$width}/h_{$height}/q_90/zc_1/a_c/" . str_replace("=", "", base64_encode($src)) . ".png";
+        return home_url() . "/timthumb/w_{$width}/h_{$height}/q_90/zc_1/a_c/" . pk_safe_base64_encode($src) . ".png";
     }
     return PUOCK_ABS_URI . "/timthumb.php?w={$width}&h={$height}&a=c&zc=1&q=90&src=" . $src;
 }
@@ -380,7 +384,7 @@ function pk_post_style_list()
 
 //评论添加@功能
 if (pk_is_checked('comment_has_at')) {
-    add_filter('comment_text', 'pk_comment_add_at', 20, 2);
+    add_filter('comment_text', 'pk_comment_add_at', 10, 2);
 }
 //GrAvatar头像源切换
 if (pk_get_option('gravatar_url', 'wp') != 'wp') {
@@ -882,7 +886,7 @@ function pk_get_req_data(array $model)
             }
         } else {
             if ($item['remove_html'] ?? false) {
-                $val = sanitize_text_field($val);
+                $val = esc_html($val);
             }
             $data[$key] = $val;
         }
@@ -959,7 +963,7 @@ function pk_user_center_url(): string
 function pk_rewrite_rule()
 {
     if (pk_is_checked('user_center')) {
-        add_rewrite_rule("^uc/?", 'index.php?pagename=user-center', "top");
+        add_rewrite_rule('^uc/?([0-9A-Za-z_\-]+)?$', 'index.php?pagename=user-center&id=$matches[1]', "top");
     }
 }
 
@@ -986,6 +990,12 @@ function pk_template_redirect()
 }
 
 add_action('template_redirect', 'pk_template_redirect');
+
+function pk_query_vars($vars){
+    $vars[] = 'id';
+    return $vars;
+}
+add_filter( 'query_vars', 'pk_query_vars' );
 
 function pk_load_template($_template_file, $require_once = true, $args = array())
 {
