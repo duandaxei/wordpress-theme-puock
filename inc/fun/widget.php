@@ -805,7 +805,7 @@ class puockTagCloud extends puockWidgetBase {
                 $count++;
             }
         }else{
-            echo sc_tips_primary(null, "暂无标签");
+            echo "<span class='c-sub fs14'>暂无标签</span>";
         }
         echo '</div>';
         $this->get_common_widget_footer($instance);
