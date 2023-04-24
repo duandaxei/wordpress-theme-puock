@@ -58,9 +58,9 @@
 
 ### 环境要求
 
-- WordPress `5.0+`
-- PHP `7.4+`
-- MySQL `5.6+`
+- WordPress `>=5.0`
+- PHP `>=7.4`
+- MySQL `>=5.6`
 
 ## 主题特性
 

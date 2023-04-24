@@ -16,6 +16,7 @@ class OptionAi
                     'label'=>__('启用ChatGPT问答', PUOCK),
                     'type'=>'switch',
                     'sdt'=>false,
+                    'tips'=>__('启用后去<a href="/wp-admin/post-new.php?post_type=page">创建页面</a>选择<code>ChatGPT问答</code>模板即可使用', PUOCK)
                 ],
                 [
                     'id'=>'openai_api_key',
@@ -27,7 +28,7 @@ class OptionAi
                     'id'=>'openai_api_agent',
                     'label'=>__('OpenAI API 代理域', PUOCK),
                     'type'=>'text',
-                    'tips'=>__('默认为<code>https://api.openai.com/v1</code>，如果你的服务器无法访问该域名，请自行配置代理域名', PUOCK),
+                    'tips'=>__('默认为<code>https://api.openai.com</code>，如果你的服务器无法访问该域名，请自行配置代理域名', PUOCK),
                 ],
                 [
                     'id'=>'openai_max_tokens',
@@ -53,6 +54,13 @@ class OptionAi
                     'label'=>__('允许游客使用', PUOCK),
                     'type'=>'switch',
                     'tips'=>__('是否在未登录状态下也可以使用', PUOCK),
+                ],
+                [
+                    'id'=>'openai_stream',
+                    'label'=>__('使用Stream(实时输出)模式<code>即将支持</code>', PUOCK),
+                    'type'=>'switch',
+                    'disabled'=>true,
+                    'tips'=>__('启用后请关闭nginx的<code>gzip</code>模式', PUOCK),
                 ],
                 [
                     'id'=>'openai_default_welcome_chat',
