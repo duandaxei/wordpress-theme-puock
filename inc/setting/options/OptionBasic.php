@@ -31,6 +31,18 @@ class OptionBasic extends BaseOptionItem
                     'sdt' => 'false',
                 ],
                 [
+                    'id' => 'off_img_viewer',
+                    'label' => __('禁用正文图片灯箱预览', PUOCK),
+                    'type' => 'switch',
+                    'sdt' => false,
+                ],
+                [
+                    'id' => 'off_code_highlighting',
+                    'label' => __('禁用主题代码高亮', PUOCK),
+                    'type' => 'switch',
+                    'sdt' => false,
+                ],
+                [
                     'id' => 'post_content_indent',
                     'label' => __('正文内容首行缩进', PUOCK),
                     'type' => 'switch',
