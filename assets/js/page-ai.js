@@ -30,6 +30,7 @@ jQuery(function () {
                     const el = $(e.currentTarget)
                     const inputEl = $(".chat-input")
                     const text = $.trim(inputEl.val())
+                    const useImgMode = $("#chat-use-img-mode").is(":checked")
                     if (text === "") {
                         $p.toast('请先输入内容')
                         return
@@ -38,12 +39,14 @@ jQuery(function () {
                         ai: false,
                         avatar: aiMetaInfo.userAvatar,
                         content: text,
+                        imgMode:useImgMode
                     })
                     const chat = this.putMsg({
                         ai: true,
                         avatar: aiMetaInfo.aiAvatar,
                         content: '',
-                        load: true
+                        load: true,
+                        imgMode:useImgMode
                     })
                     el.attr("disabled", true)
                     inputEl.val("")
@@ -69,7 +72,7 @@ jQuery(function () {
                             headers: {
                                 'Content-Type': 'application/json',
                             },
-                            body: JSON.stringify({text: text}),
+                            body: JSON.stringify({text: text, imgMode:useImgMode}),
                         });
                         if (!f.ok) {
                             callback("请求失败：发起请求错误", true, true)
@@ -117,8 +120,13 @@ jQuery(function () {
                                     </div>
                                     <div class="col">
                                         <div class="fs14 content-box ${data.ai ? 'cursor-blink-after' : ''}">${this.parseContent(data.content)}</div>
-                                        <div class="d-flex fs14 align-items-center mt-2">
-                                            <div class="text-muted fs12 primary-text-hover pk-copy" data-cp-title="对话信息" data-cp-func="puockAiChatCopy" data-id="${id}"><i class="fa-regular fa-copy mr-1"></i>复制</div>
+                                        <div class="d-flex align-items-center mt-2 text-muted fs12">
+                                            <div class="mr-1">
+                                                <i class="fa fa-${data.imgMode ? 'palette' : 'robot'} mr-1"></i>${data.imgMode ? 'AI绘画' : 'AI问答'}
+                                            </div>
+                                            <div class="primary-text-hover pk-copy" data-cp-title="对话信息" data-cp-func="puockAiChatCopy" data-id="${id}">
+                                                <span><i class="fa-regular fa-copy mr-1"></i>复制</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
