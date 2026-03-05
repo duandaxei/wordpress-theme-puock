@@ -61,30 +61,20 @@ function pk_the_author_class_out($count)
     if ($count <= 0) {
         return '';
     }
-    switch ($count) {
-        case $count >= 1 && $count < 20:
-            $level = 1;
-            break;
-        case $count >= 20 && $count < 40:
-            $level = 2;
-            break;
-        case $count >= 40 && $count < 60:
-            $level = 3;
-            break;
-        case $count >= 60 && $count < 80:
-            $level = 4;
-            break;
-        case $count >= 120 && $count < 120:
-            $level = 5;
-            break;
-        case $count >= 140 && $count < 140:
-            $level = 6;
-            break;
-        case $count >= 160 && $count < 160:
-            $level = 7;
-            break;
-        default:
-            return '';
+    if ($count < 20) {
+        $level = 1;
+    } elseif ($count < 40) {
+        $level = 2;
+    } elseif ($count < 60) {
+        $level = 3;
+    } elseif ($count < 80) {
+        $level = 4;
+    } elseif ($count < 120) {
+        $level = 5;
+    } elseif ($count < 160) {
+        $level = 6;
+    } else {
+        $level = 7;
     }
     return '<span class="t-sm c-sub"><i class="fa-regular fa-gem mr-1"></i>' . __('评论达人', PUOCK) . ' LV.' . $level . '</span>';
 }
@@ -307,7 +297,7 @@ function get_post_images($_post = null): string
         return get_random_default_image();
     }
 
-    $post_id = $post_obj->ID;
+    $post_id = (int)$post_obj->ID;
     $content = $post_obj->post_content;
 
     // 2. 优先：特色图（支持 attachment 和 外部链接）
@@ -340,19 +330,31 @@ function get_post_images($_post = null): string
         return esc_url($first_image);
     }
 
-    // 4. 最后：返回随机默认图
-    return get_random_default_image();
+    // 4. 最后：返回随机默认图（传入文章ID确保同一文章图片稳定）
+    return get_random_default_image($post_id);
 }
 
 /**
  * 获取随机默认图片
+ * 基于文章ID生成伪随机数，确保同一文章始终使用相同图片，不同文章尽量不同
  *
+ * @param int|null $post_id 文章ID，为null时使用纯随机
  * @return string 默认图 URL
  */
-function get_random_default_image(): string
+function get_random_default_image($post_id = null): string
 {
-    $img_dir = get_template_directory_uri() . '/assets/img/random/';
-    return esc_url($img_dir . mt_rand(1, 8) . '.jpg');
+    $img_dir = get_template_directory() . '/assets/img/random/';
+    $img_uri = get_template_directory_uri() . '/assets/img/random/';
+    $files = glob($img_dir . '*.{jpg,jpeg,png,gif,webp,avif}', GLOB_BRACE);
+    $count = $files ? count($files) : 8;
+    if ($post_id) {
+        $index = (crc32('puock_rand_' . $post_id) % $count);
+        $index = abs($index);
+    } else {
+        $index = mt_rand(0, $count - 1);
+    }
+    $filename = $files ? basename($files[$index]) : ($index + 1) . '.jpg';
+    return esc_url($img_uri . $filename);
 }
 
 //分页功能

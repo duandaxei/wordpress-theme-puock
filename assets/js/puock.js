@@ -662,6 +662,10 @@ class Puock {
             result += "</ul>"
             $("#post-menu-content-items").html(result);
             $(".post-menus-box").show();
+            if (this.data.params.use_post_menu_open) {
+                this.toggleMenu();
+                $("[class^=post-menu-sub]").show();
+            }
         }
     }
 

@@ -386,6 +386,18 @@ function pk_get_wp_links($link_cats = '', $auto_all = false)
             LEFT JOIN (select * from {$wpdb->term_relationships} where term_taxonomy_id in ({$link_cats})) as relat on links.link_id = relat.object_id
             LEFT JOIN (selecT * from {$wpdb->terms} where term_id in ({$link_cats})) as terms on terms.term_id = relat.term_taxonomy_id
              where links.link_id in (relat.object_id) and links.link_visible='Y'";
+    $orderby_map = [
+        'link_id' => 'links.link_id',
+        'url' => 'links.link_url',
+        'name' => 'links.link_name',
+        'rating' => 'links.link_rating',
+        'length' => 'LENGTH(links.link_name)',
+        'rand' => 'RAND()',
+    ];
+    $orderby_key = pk_get_option('index_link_order_by', 'link_id');
+    $orderby_col = $orderby_map[$orderby_key] ?? 'links.link_id';
+    $order = strtoupper(pk_get_option('index_link_order', 'ASC')) === 'DESC' ? 'DESC' : 'ASC';
+    $sql .= " ORDER BY terms.term_id ASC, {$orderby_col} {$order}";
     return $wpdb->get_results($sql);
 }
 
@@ -439,6 +451,9 @@ if (pk_is_checked('basic_img_lazy_z')) {
 function pk_get_img_thumbnail_src($src, $width, $height, $args = array())
 {
     if ($width == null || $height == null) {
+        return $src;
+    }
+    if (pk_is_checked('disable_timthumb')) {
         return $src;
     }
     if (pk_is_checked('thumbnail_rewrite_open')) {
@@ -905,6 +920,17 @@ function pk_pre_post_set($query)
                 $query->set('orderby', 'modified');
                 $query->set('order', 'DESC');
             }
+            $exclude_cats = pk_get_option('cms_new_exclude_cats');
+            if (!empty($exclude_cats)) {
+                $cat_ids = is_array($exclude_cats) ? array_map('intval', $exclude_cats) : [intval($exclude_cats)];
+                $query->set('category__not_in', $cat_ids);
+            }
+        }
+    }
+    if ($query->is_category() && $query->is_main_query()) {
+        $cat_per_page = intval(pk_get_option('category_posts_per_page', 0));
+        if ($cat_per_page > 0) {
+            $query->set('posts_per_page', $cat_per_page);
         }
     }
 }
