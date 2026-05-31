@@ -30,6 +30,7 @@ require_once PUOCK_ABS_DIR . '/inc/fun/cache.php';
 require_once PUOCK_ABS_DIR . '/inc/setting/index.php';
 require_once PUOCK_ABS_DIR . '/inc/ext/init.php';
 require_once PUOCK_ABS_DIR . '/inc/fun/ajax.php';
+require_once PUOCK_ABS_DIR . '/inc/fun/mail.php';
 require_once PUOCK_ABS_DIR . '/inc/oauth/oauth.php';
 require_once PUOCK_ABS_DIR . '/inc/fun/security.php';
 require_once PUOCK_ABS_DIR . '/inc/fun/comment-ajax.php';
@@ -453,12 +454,15 @@ function pk_get_img_thumbnail_src($src, $width, $height, $args = array())
     if ($width == null || $height == null) {
         return $src;
     }
-    $src_path = wp_parse_url($src, PHP_URL_PATH);
-    $src_ext = strtolower(pathinfo($src_path ?: $src, PATHINFO_EXTENSION));
-    if (in_array($src_ext, array('webp', 'avif'), true)) {
+    if (pk_is_checked('disable_timthumb')) {
         return $src;
     }
-    if (pk_is_checked('disable_timthumb')) {
+    $src_path = wp_parse_url($src, PHP_URL_PATH);
+    $src_ext = strtolower(pathinfo($src_path ?: $src, PATHINFO_EXTENSION));
+    if ($src_ext === 'webp' && (!function_exists('imagecreatefromwebp') || !function_exists('imagewebp'))) {
+        return $src;
+    }
+    if ($src_ext === 'avif' && (!function_exists('imagecreatefromavif') || !function_exists('imageavif'))) {
         return $src;
     }
     if (pk_is_checked('thumbnail_rewrite_open')) {
@@ -571,15 +575,7 @@ if (pk_is_checked('comment_mail_notify')) {
 if (pk_is_checked('smtp_open')) {
     function mail_smtp_set($phpmailer)
     {
-        $phpmailer->From = pk_get_option('smtp_form', '');
-        $phpmailer->FromName = pk_get_option('smtp_form_n', '');
-        $phpmailer->Host = pk_get_option('smtp_host', '');
-        $phpmailer->Port = pk_get_option('smtp_port', '');
-        $phpmailer->SMTPSecure = pk_is_checked('smtp_ssl') ? 'ssl' : '';
-        $phpmailer->Username = pk_get_option('smtp_u', '');
-        $phpmailer->Password = pk_get_option('smtp_p', '');
-        $phpmailer->IsSMTP();
-        $phpmailer->SMTPAuth = true;
+        pk_smtp_apply_config($phpmailer, pk_smtp_get_option_config());
     }
 
     add_action('phpmailer_init', 'mail_smtp_set');

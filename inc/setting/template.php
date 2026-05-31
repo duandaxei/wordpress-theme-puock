@@ -15,9 +15,31 @@ $puock_admin_color_scheme = [
 ];
 $puock_admin_primary_color = $puock_admin_color_scheme['colors'][3] ?? ($puock_admin_color_scheme['colors'][2] ?? '#2271b1');
 $puock_config_debug_entry = \Puock\Theme\setting\PuockSetting::get_config_debug_entry();
+$puock_setting_asset_version = static function ($relative_path) {
+    $version = PUOCK_CUR_VER_STR;
+    $file_path = get_template_directory() . $relative_path;
+    if (is_readable($file_path)) {
+        $version .= '-' . filemtime($file_path);
+    }
+    return esc_attr($version);
+};
+$puock_smtp_test_mail_labels = [
+    'recipient' => __('收件人', PUOCK),
+    'admin' => __('站点管理员邮箱', PUOCK),
+    'current' => __('当前登录用户邮箱', PUOCK),
+    'custom' => __('自定义邮箱', PUOCK),
+    'customPlaceholder' => __('请输入收件人邮箱', PUOCK),
+    'send' => __('发送测试邮件', PUOCK),
+    'sending' => __('正在发送...', PUOCK),
+    'success' => __('测试邮件发送成功，请检查收件箱', PUOCK),
+    'failed' => __('测试邮件发送失败', PUOCK),
+    'missingUrl' => __('缺少测试邮件接口地址', PUOCK),
+    'requestFailed' => __('请求失败，请检查网络或控制台错误', PUOCK),
+    'tips' => __('测试会使用当前表单中的 SMTP 配置，不会自动保存。测试通过后仍需点击右上角保存配置。', PUOCK),
+];
 ?>
 <?php if ($puock_config_debug_entry === ''): ?>
-<link rel="stylesheet" href="<?php echo get_template_directory_uri() ?>/assets/dist/setting/index.css?ver=<?php echo PUOCK_CUR_VER_STR ?>">
+<link rel="stylesheet" href="<?php echo get_template_directory_uri() ?>/assets/dist/setting/index.css?ver=<?php echo $puock_setting_asset_version('/assets/dist/setting/index.css') ?>">
 <?php endif; ?>
 <style id="pk-options-style"></style>
 <div id="app">
@@ -53,16 +75,17 @@ $puock_config_debug_entry = \Puock\Theme\setting\PuockSetting::get_config_debug_
         donate: "https://licoy.cn/puock-theme-sponsor.html",
         update_url: '<?php echo admin_url('admin-ajax.php') ?>?action=update_theme_options',
         reset_url: '<?php echo admin_url('admin-ajax.php') ?>?action=reset_theme_options',
+        smtp_test_url: <?php echo wp_json_encode(admin_url('admin-ajax.php?action=pk_smtp_test_mail&nonce=' . wp_create_nonce('pk_smtp_test_mail')), JSON_UNESCAPED_SLASHES); ?>,
+        smtpTestMailLabels: <?php echo wp_json_encode($puock_smtp_test_mail_labels, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>,
         fields:<?php echo json_encode($fields); ?>,
         data:<?php echo json_encode(get_option(PUOCK_OPT)); ?>,
     }
-
 </script>
-<script type="text/javascript" crossorigin src="<?php echo get_template_directory_uri() ?>/assets/dist/setting/language/<?php echo get_user_locale() ?>.js?ver=<?php echo PUOCK_CUR_VER_STR ?>"></script>
+<script type="text/javascript" crossorigin src="<?php echo get_template_directory_uri() ?>/assets/dist/setting/language/<?php echo get_user_locale() ?>.js?ver=<?php echo $puock_setting_asset_version('/assets/dist/setting/language/' . get_user_locale() . '.js') ?>"></script>
 <?php if ($puock_config_debug_entry !== ''): ?>
     <script type="module" src="<?php echo esc_url($puock_config_debug_entry . '/@vite/client'); ?>"></script>
     <script type="module" src="<?php echo esc_url($puock_config_debug_entry . '/src/main.ts'); ?>"></script>
 <?php else: ?>
     <script type="module" crossorigin
-            src="<?php echo get_template_directory_uri() ?>/assets/dist/setting/index.js?ver=<?php echo PUOCK_CUR_VER_STR ?>"></script>
+            src="<?php echo get_template_directory_uri() ?>/assets/dist/setting/index.js?ver=<?php echo $puock_setting_asset_version('/assets/dist/setting/index.js') ?>"></script>
 <?php endif; ?>

@@ -511,6 +511,27 @@ function pk_head_style_var()
     return ":root{" . join(";", $vars) . "}";
 }
 
+function pk_get_site_max_width()
+{
+    $width = absint(pk_get_option('site_max_width', 1240));
+    if ($width < 320 || $width > 2560) {
+        return 1240;
+    }
+    return $width;
+}
+
+function pk_site_max_width_style()
+{
+    $width = pk_get_site_max_width();
+    if ($width === 1240) {
+        return '';
+    }
+    return sprintf(
+        '@media (min-width: 1200px){.container,.container-lg,.container-md,.container-sm{max-width:%dpx;}}',
+        $width
+    );
+}
+
 // 加载文件媒体文件
 function pk_load_media_files()
 {
@@ -663,4 +684,27 @@ function pk_ava_home_banners()
     } else {
         return false;
     }
+}
+
+function pk_ava_cms_four_grid_items($limit = 4)
+{
+    $cms_four_grid_list = pk_get_option('cms_four_grid_list', []);
+    if (!is_array($cms_four_grid_list) || count($cms_four_grid_list) <= 0) {
+        return false;
+    }
+
+    $limit = max(1, (int)$limit);
+    $ava = [];
+    foreach ($cms_four_grid_list as $item) {
+        if (count($ava) >= $limit || !is_array($item)) {
+            continue;
+        }
+        $hidden = filter_var($item['hide'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        if ($hidden || empty($item['img'])) {
+            continue;
+        }
+        $ava[] = $item;
+    }
+
+    return count($ava) > 0 ? $ava : false;
 }
