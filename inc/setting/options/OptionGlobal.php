@@ -222,10 +222,17 @@ class OptionGlobal extends BaseOptionItem
                     'sdt' => 'false',
                 ],
                 [
+                    'id' => 'keep_single_sidebar',
+                    'label' => __('关闭全局侧边栏时仍保留文章页侧边栏', PUOCK),
+                    'type' => 'switch',
+                    'sdt' => false,
+                    'showRefId' => 'hide_global_sidebar',
+                    'tips' => __('开启后，首页、分类、标签、搜索等归档页隐藏侧边栏，文章页仍显示（单篇文章仍可用「隐藏侧边栏」metabox 覆盖）', PUOCK),
+                ],
+                [
                     'id' => 'close_rest_api',
                     'label' => __('禁止使用', PUOCK) . ' REST API',
-                    'tips' => __('开启后将不能使用相关功能，如果使用了<b>小程序</b>等功能此选项应不要开启，
-                                另外开启后可能导致古腾堡编辑器出现通信异常问题，建议非必要不开启此选项', PUOCK),
+                    'tips' => __('开启后将禁止匿名访问 REST API；已登录且具备编辑权限的用户仍可使用，以免古腾堡编辑器无法保存特色图等。如使用了<b>小程序</b>等前台 REST 功能，请不要开启此选项', PUOCK),
                     'type' => 'switch',
                     'sdt' => 'false',
                 ],

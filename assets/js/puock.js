@@ -162,6 +162,7 @@ class Puock {
             if (modalTitle) {
                 el.closest(".modal").find(".modal-title").text(modalTitle);
             }
+            this.renderTurnstileWidgets(target);
         });
         // form ajax submit
         $(document).on("submit", ".ajax-form", (e) => {
@@ -212,12 +213,14 @@ class Puock {
                         } else {
                             this.toast(res.msg || res.data || errorTip, TYPE_DANGER)
                             this.loadCommentCaptchaImage(form, true)
+                            this.resetTurnstileWidgets(form)
                         }
                     },
                     error: (e) => {
                         this.stopLoading(loading)
                         this.toast(this.tf(this.t('请求错误：%s'), e.statusText), TYPE_DANGER)
                         this.loadCommentCaptchaImage(form, true)
+                        this.resetTurnstileWidgets(form)
                     }
                 })
             }
@@ -225,6 +228,12 @@ class Puock {
                 this.gt.validate((code) => {
                     startSubmit(code)
                 });
+            } else if (validateType === 'turnstile') {
+                if (form.find('.cf-turnstile').length && !$.trim(form.find('[name="cf-turnstile-response"]').val())) {
+                    this.toast(this.t('验证码不能为空'), TYPE_WARNING)
+                    return false;
+                }
+                startSubmit()
             } else {
                 startSubmit()
             }
@@ -293,8 +302,13 @@ class Puock {
 
     gt = {
         validate: (success = undefined) => {
+            const captcha = this.data.instance.gt
+            if (!captcha || typeof captcha.showCaptcha !== 'function') {
+                this.toast(this.t('验证码不能为空'), TYPE_WARNING)
+                return
+            }
             this.data.instance.gt_callback = success
-            this.data.instance.gt.showCaptcha();
+            captcha.showCaptcha();
         }
     }
 
@@ -1013,16 +1027,23 @@ class Puock {
                 return;
             }
             if (this.data.params.vd_comment) {
-                if (this.data.params.vd_type === 'img') {
+                const vdType = this.data.params.vd_type;
+                if (vdType === 'img') {
                     if ($.trim($("#comment-vd").val()) === '') {
                         this.toast(this.t('验证码不能为空'), TYPE_WARNING);
                         return;
                     }
-                } else {
+                } else if (vdType === 'gt') {
                     this.gt.validate((code) => {
                         this.commentSubmit(this.ct(e), code)
                     })
                     return;
+                } else if (vdType === 'turnstile') {
+                    const form = $(this.ct(e));
+                    if (form.find('.cf-turnstile').length && !$.trim(form.find('[name="cf-turnstile-response"]').val())) {
+                        this.toast(this.t('验证码不能为空'), TYPE_WARNING);
+                        return;
+                    }
                 }
             }
             this.commentSubmit(this.ct(e))
@@ -1259,6 +1280,38 @@ class Puock {
         const idEl = $("#" + id);
         this.lazyLoadInit(idEl);
         this.tooltipInit(idEl.find("[data-bs-toggle=\"tooltip\"]"));
+        this.renderTurnstileWidgets(idEl);
+    }
+
+    renderTurnstileWidgets(scope) {
+        const run = () => {
+            if (!window.turnstile || typeof window.turnstile.render !== 'function') {
+                return;
+            }
+            $(scope).find('.cf-turnstile').addBack('.cf-turnstile').each((_, el) => {
+                if (el.querySelector('iframe') || $(el).closest('.d-none').length) {
+                    return;
+                }
+                window.turnstile.render(el);
+            });
+        };
+        if (window.turnstile && typeof window.turnstile.ready === 'function') {
+            window.turnstile.ready(run);
+        } else {
+            run();
+        }
+    }
+
+    resetTurnstileWidgets(scope) {
+        if (!window.turnstile || typeof window.turnstile.reset !== 'function') {
+            return;
+        }
+        $(scope).find('.cf-turnstile').each((_, el) => {
+            try {
+                window.turnstile.reset(el);
+            } catch (e) {
+            }
+        });
     }
 
     eventPostMainBoxResize() {

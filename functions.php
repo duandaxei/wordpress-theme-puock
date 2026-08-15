@@ -262,7 +262,8 @@ add_action('init', 'puock_twemoji_smiley', 3);
 
 function get_wpsmiliestrans()
 {
-    global $wpsmiliestrans, $output;
+    global $wpsmiliestrans;
+    $output = '';
     if (!is_array($wpsmiliestrans)) {
         $wpsmiliestrans = array();
     }
@@ -354,6 +355,35 @@ function get_post_images($_post = null): string
 }
 
 /**
+ * glob() 兼容封装。
+ * Alpine / musl 等 PHP 构建不提供 GLOB_BRACE，直接使用会 Fatal Error。
+ *
+ * @param string $pattern
+ * @return string[]
+ */
+function pk_glob($pattern): array
+{
+    if (defined('GLOB_BRACE')) {
+        $files = glob($pattern, GLOB_BRACE);
+        return is_array($files) ? $files : [];
+    }
+
+    if (preg_match('/^(.*)\{([^}]+)\}(.*)$/', $pattern, $m)) {
+        $files = [];
+        foreach (explode(',', $m[2]) as $alt) {
+            $matched = glob($m[1] . $alt . $m[3]);
+            if (is_array($matched)) {
+                $files = array_merge($files, $matched);
+            }
+        }
+        return $files;
+    }
+
+    $files = glob($pattern);
+    return is_array($files) ? $files : [];
+}
+
+/**
  * 获取随机默认图片
  * 基于文章ID生成伪随机数，确保同一文章始终使用相同图片，不同文章尽量不同
  *
@@ -364,7 +394,7 @@ function get_random_default_image($post_id = null): string
 {
     $img_dir = get_template_directory() . '/assets/img/random/';
     $img_uri = get_template_directory_uri() . '/assets/img/random/';
-    $files = glob($img_dir . '*.{jpg,jpeg,png,gif,webp,avif}', GLOB_BRACE);
+    $files = pk_glob($img_dir . '*.{jpg,jpeg,png,gif,webp,avif}');
     $count = $files ? count($files) : 8;
     if ($post_id) {
         $index = (crc32('puock_rand_' . $post_id) % $count);
@@ -576,6 +606,9 @@ function count_words($text = null)
 //给文章内容添加灯箱
 function light_box_text_replace($content)
 {
+    if (!is_string($content)) {
+        return $content;
+    }
     $pattern = "/<a(.*?)href=('|\")([A-Za-z0-9\/_\.\~\:-]*?)(\.bmp|\.gif|\.jpg|\.jpeg|\.png)('|\")([^\>]*?)>/i";
     $replacement = '<a$1href=$2$3$4$5$6 class="fancybox" data-no-instant target="_blank">';
     $content = preg_replace($pattern, $replacement, $content);
@@ -589,6 +622,9 @@ add_filter('the_content', 'light_box_text_replace', 99);
 function content_img_add_alt_title($content)
 {
     global $post;
+    if (!is_string($content)) {
+        return $content;
+    }
     preg_match_all('/<img (.*?)\/>/', $content, $images);
     if (!is_null($images)) {
         $title = @$post->post_title;
@@ -607,6 +643,9 @@ add_filter('the_content', 'content_img_add_alt_title', 99);
 function pk_bootstrap_table_class($content)
 {
     global $post;
+    if (!is_string($content)) {
+        return $content;
+    }
     preg_match_all('/<table.*?>[\s\S]*<\/table>/', $content, $tables);
     if (!is_null($tables)) {
         foreach ($tables[0] as $index => $value) {
