@@ -3,14 +3,383 @@ name: Release
 on:
   push:
     tags:
-      - v*
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  verify:
+    name: Verify / PHP ${{ matrix.php }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        php:
+          - "7.4"
+          - "8.5"
+
     steps:
-      - name: Auto Release
-        uses: "marvinpinto/action-automatic-releases@latest"
+      - name: Check out release tag
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          draft: true
+          persist-credentials: false
+          ref: ${{ github.ref }}
+
+      - name: Set up PHP and Composer
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2 tag, peeled commit
+        with:
+          php-version: ${{ matrix.php }}
+          tools: composer:2.8
+          coverage: none
+
+      - name: Verify tag and theme version
+        run: |
+          set -euo pipefail
+
+          tag="${GITHUB_REF_NAME}"
+          if [[ ! "${tag}" =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "Release tag must match vX.Y.Z; received: ${tag}" >&2
+            exit 1
+          fi
+
+          tag_version="${BASH_REMATCH[1]}"
+          mapfile -t style_versions < <(
+            sed -nE 's/^Version:[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+)[[:space:]]*$/\1/p' style.css
+          )
+          if (( ${#style_versions[@]} != 1 )); then
+            echo "style.css must contain exactly one strict X.Y.Z Version header" >&2
+            exit 1
+          fi
+          if [[ "${style_versions[0]}" != "${tag_version}" ]]; then
+            echo "Tag version ${tag_version} does not match style.css ${style_versions[0]}" >&2
+            exit 1
+          fi
+
+      - name: Validate Composer metadata
+        run: composer validate --strict --no-check-publish --no-interaction
+
+      - name: Install production Composer dependencies
+        run: >-
+          composer install
+          --no-dev
+          --prefer-dist
+          --optimize-autoloader
+          --no-interaction
+          --no-progress
+          --no-scripts
+          --no-plugins
+
+      - name: Audit Composer dependencies
+        run: composer audit --locked --no-dev --no-interaction
+
+      - name: Verify production autoload
+        run: |
+          php -r '
+            require "vendor/autoload.php";
+            $symbols = [
+              "Ip2Region" => "class_exists",
+              "Orhanerday\\OpenAi\\OpenAi" => "class_exists",
+              "Rahul900day\\Gpt3Encoder\\Encoder" => "class_exists",
+              "Yurun\\OAuthLogin\\Github\\OAuth2" => "class_exists",
+              "YahnisElsts\\PluginUpdateChecker\\v5\\PucFactory" => "class_exists",
+              "Psr\\Log\\LoggerInterface" => "interface_exists",
+            ];
+            foreach ($symbols as $symbol => $check) {
+              if (!$check($symbol)) {
+                fwrite(STDERR, "Missing Composer symbol: {$symbol}\n");
+                exit(1);
+              }
+            }
+          '
+
+      - name: Run PHP regression tests
+        run: |
+          set -euo pipefail
+          test_files=(tests/*.test.php)
+          if [[ ! -e "${test_files[0]}" ]]; then
+            echo "No PHP regression tests found" >&2
+            exit 1
+          fi
+          for test_file in "${test_files[@]}"; do
+            php "${test_file}"
+          done
+
+      - name: Lint tracked PHP files
+        run: |
+          set -euo pipefail
+          php_files=0
+          while IFS= read -r -d '' php_file; do
+            php -l "${php_file}" > /dev/null
+            php_files=$((php_files + 1))
+          done < <(git ls-files -z -- '*.php')
+          if (( php_files == 0 )); then
+            echo "No tracked PHP files found" >&2
+            exit 1
+          fi
+          echo "Linted ${php_files} tracked PHP files"
+
+  package-release:
+    name: Package draft release
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          ref: ${{ github.ref }}
+
+      - name: Set up PHP and Composer
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2 tag, peeled commit
+        with:
+          php-version: "7.4"
+          tools: composer:2.8
+          coverage: none
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "20"
+
+      - name: Audit frontend dependencies
+        run: npm audit --package-lock-only --audit-level=high
+
+      - name: Build and verify production archive
+        run: bash scripts/package-release.sh "${GITHUB_REF_NAME}" "${RUNNER_TEMP}/release"
+
+      - name: Set up PHP 8.5 for archive compatibility check
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2 tag, peeled commit
+        with:
+          php-version: "8.5"
+          coverage: none
+
+      - name: Lint packaged PHP with PHP 8.5
+        run: |
+          set -euo pipefail
+          archive="${RUNNER_TEMP}/release/Puock-V${GITHUB_REF_NAME#v}.zip"
+          extract_dir="${RUNNER_TEMP}/release-php85"
+          mkdir -p "${extract_dir}"
+          unzip -q "${archive}" -d "${extract_dir}"
+          php_files=0
+          while IFS= read -r -d '' php_file; do
+            php -n -l "${php_file}" > /dev/null
+            php_files=$((php_files + 1))
+          done < <(find "${extract_dir}/puock" -type f -name '*.php' -print0)
+          if (( php_files == 0 )); then
+            echo "No packaged PHP files found" >&2
+            exit 1
+          fi
+          echo "Linted ${php_files} packaged PHP files with PHP 8.5"
+
+      - name: Create or verify draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_DIR: ${{ runner.temp }}/release
+        run: |
+          set -euo pipefail
+
+          tag="${GITHUB_REF_NAME}"
+          archive_name="Puock-V${tag#v}.zip"
+          checksum_name="${archive_name}.sha256"
+          archive_path="${RELEASE_DIR}/${archive_name}"
+          checksum_path="${RELEASE_DIR}/${checksum_name}"
+          releases_endpoint="repos/${GITHUB_REPOSITORY}/releases?per_page=100"
+          note_paragraph="$(printf '**Official install package:** Download `%s` only. Source code files generated automatically by GitHub are repository snapshots, not release packages.' "${archive_name}")"
+
+          for release_file in "${archive_path}" "${checksum_path}"; do
+            if [[ ! -f "${release_file}" ]]; then
+              echo "Missing release file: ${release_file}" >&2
+              exit 1
+            fi
+          done
+
+          previous_tag="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq '.tag_name')"
+          if [[ ! "${previous_tag}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ || "${previous_tag}" == "${tag}" ]]; then
+            echo "Could not determine the previous stable release tag" >&2
+            exit 1
+          fi
+          compare_json="$(
+            gh api --paginate --slurp \
+              "repos/${GITHUB_REPOSITORY}/compare/${previous_tag}...${tag}?per_page=100"
+          )"
+          commit_count="$(jq '[.[] | .commits[]] | length' <<<"${compare_json}")"
+          if (( commit_count == 0 )); then
+            echo "No commits found between ${previous_tag} and ${tag}" >&2
+            exit 1
+          fi
+          changelog="$(
+            jq -r '
+              def titles: {
+                feat: "Features", fix: "Bug Fixes", docs: "Documentation",
+                style: "Styles", refactor: "Code Refactoring",
+                perf: "Performance Improvements", test: "Tests", build: "Builds",
+                ci: "Continuous Integration", chore: "Chores", revert: "Reverts"
+              };
+              def parsed_commit:
+                . as $commit
+                | ($commit.commit.message | split("\n")[0]) as $header
+                | select(($header | test("^Merge ")) | not)
+                | (try ($header | capture("^(?<type>[A-Za-z]+)(?:\\((?<scope>[^)]+)\\))?!?:[[:space:]]+(?<subject>.+)$")) catch null) as $parsed
+                | {
+                    type: ($parsed.type // null), scope: ($parsed.scope // null),
+                    subject: ($parsed.subject // null), header: $header, hash: $commit.sha,
+                    author: ($commit.commit.author.name // "unknown"), url: $commit.html_url,
+                    breaking: ($commit.commit.message | test("(?m)^BREAKING CHANGES?:[[:space:]]"))
+                  }
+                | .line = if .type then
+                    "- \(if .scope then "**\(.scope)**: " else "" end)\(.subject) ([\(.author)](\(.url)))"
+                  else "- \(.hash[0:7]): \(.header) (\(.author))" end;
+              def section($title; $lines):
+                if ($lines | length) == 0 then empty
+                else "## \($title)\n" + ($lines | join("\n")) end;
+
+              [.[] | .commits[] | parsed_commit] as $commits
+              | ["feat","fix","docs","style","refactor","perf","test","build","ci","chore","revert"] as $types
+              | [
+                  section("Breaking Changes"; [$commits[] | select(.breaking) | .line]),
+                  ($types[] as $type | section(titles[$type]; [$commits[] | select(.type == $type) | .line])),
+                  section("Commits"; [$commits[] | select((.type // "") as $type | $types | index($type) | not) | .line])
+                ]
+              | join("\n\n")
+            ' <<<"${compare_json}"
+          )"
+          if [[ -z "${changelog}" ]]; then
+            echo "Generated release changelog is empty" >&2
+            exit 1
+          fi
+          release_notes="${note_paragraph}"$'\n\n'"${changelog}"
+
+          find_release_by_tag() {
+            local releases_json
+            local matches_json
+            local match_count
+
+            if ! releases_json="$(gh api --paginate --slurp "${releases_endpoint}")"; then
+              echo "Could not list repository releases" >&2
+              return 1
+            fi
+            if ! matches_json="$(
+              jq -c --arg tag "${tag}" \
+                '[.[][] | select(.tag_name == $tag)]' \
+                <<<"${releases_json}"
+            )"; then
+              echo "Could not filter repository releases" >&2
+              return 1
+            fi
+            if ! match_count="$(jq 'length' <<<"${matches_json}")"; then
+              echo "Could not count matching releases" >&2
+              return 1
+            fi
+            if (( match_count > 1 )); then
+              echo "Found multiple releases for tag ${tag}" >&2
+              exit 1
+            fi
+            jq -c '.[0] // empty' <<<"${matches_json}"
+          }
+
+          download_release_asset() {
+            local release_json="$1"
+            local asset_name="$2"
+            local output_path="$3"
+            local asset_id
+
+            asset_id="$(
+              jq -er --arg name "${asset_name}" \
+                '.assets[] | select(.name == $name) | .id' \
+                <<<"${release_json}"
+            )"
+            gh api \
+              -H 'Accept: application/octet-stream' \
+              "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" \
+              > "${output_path}"
+          }
+
+          verify_existing_draft() {
+            local release_json="$1"
+            local existing_dir="${RUNNER_TEMP}/existing-release"
+            local release_body
+
+            if ! jq -e '.draft == true and .prerelease == false' <<<"${release_json}" > /dev/null; then
+              echo "Existing release must be a non-prerelease draft" >&2
+              exit 1
+            fi
+            if ! jq -e --arg archive "${archive_name}" --arg checksum "${checksum_name}" \
+              '(.assets | length) == 2
+                and ([.assets[].name] | sort) == ([$archive, $checksum] | sort)
+                and all(.assets[]; (.label // "") == "")' \
+              <<<"${release_json}" > /dev/null; then
+              echo "Existing draft must contain only the expected unlabeled ZIP and checksum assets" >&2
+              exit 1
+            fi
+
+            release_body="$(jq -r '.body // ""' <<<"${release_json}")"
+            if [[ "${release_body}" != "${release_notes}" ]]; then
+              echo "Existing draft release notes differ from the generated changelog" >&2
+              exit 1
+            fi
+
+            mkdir -p "${existing_dir}"
+            download_release_asset \
+              "${release_json}" \
+              "${archive_name}" \
+              "${existing_dir}/${archive_name}"
+            download_release_asset \
+              "${release_json}" \
+              "${checksum_name}" \
+              "${existing_dir}/${checksum_name}"
+            if ! cmp -s "${archive_path}" "${existing_dir}/${archive_name}"; then
+              echo "Existing draft ZIP has a different digest" >&2
+              exit 1
+            fi
+            if ! cmp -s "${checksum_path}" "${existing_dir}/${checksum_name}"; then
+              echo "Existing draft checksum asset differs from the generated checksum" >&2
+              exit 1
+            fi
+          }
+
+          release_json="$(find_release_by_tag)"
+          if [[ -n "${release_json}" ]]; then
+            verify_existing_draft "${release_json}"
+            echo "An identical draft release already exists; no assets were changed."
+            exit 0
+          fi
+
+          gh release create "${tag}" \
+            "${archive_path}" \
+            "${checksum_path}" \
+            --draft \
+            --verify-tag \
+            --title "${tag}" \
+            --notes "${release_notes}"
+
+          for attempt in {1..12}; do
+            if ! release_json="$(find_release_by_tag)"; then
+              exit 1
+            fi
+            if [[ -n "${release_json}" ]]; then
+              break
+            fi
+            if (( attempt < 12 )); then
+              echo "Draft release is not visible yet (attempt ${attempt}/12); retrying in 5 seconds" >&2
+              sleep 5
+            fi
+          done
+          if [[ -z "${release_json}" ]]; then
+            echo "Draft release was created but was not visible after 12 attempts" >&2
+            exit 1
+          fi
+          verify_existing_draft "${release_json}"
