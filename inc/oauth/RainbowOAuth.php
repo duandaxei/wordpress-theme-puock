@@ -158,11 +158,11 @@ class RainbowOAuth
         }
 
         $apiUrl = $apiBase . '/connect.php';
+        $url = add_query_arg($query, $apiUrl);
 
-        $resp = wp_remote_post($apiUrl, [
+        $resp = wp_safe_remote_get($url, [
             'timeout' => 15,
             'redirection' => 0,
-            'body' => $query,
         ]);
 
         if (is_wp_error($resp))

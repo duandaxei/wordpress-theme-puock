@@ -55,8 +55,9 @@ assert_contains('esc_js($title)', $poster, 'Poster title should be escaped in Ja
 
 $oauth = file_text('inc/oauth/RainbowOAuth.php');
 assert_contains('parse_url($apiBase, PHP_URL_SCHEME) !== \'https\'', $oauth, 'CCY OAuth API base should require HTTPS.');
-assert_contains('wp_remote_post($apiUrl', $oauth, 'CCY OAuth AppKey should not be sent in the URL query string.');
-assert_not_contains('wp_remote_get($url', $oauth, 'CCY OAuth should not use GET with AppKey in the URL.');
+assert_contains('$url = add_query_arg($query, $apiUrl)', $oauth, 'CCY OAuth should follow the documented GET query contract.');
+assert_contains('wp_safe_remote_get($url', $oauth, 'CCY OAuth should validate the configured remote endpoint.');
+assert_not_contains('wp_remote_post($apiUrl', $oauth, 'CCY OAuth should not send documented query parameters as a POST body.');
 
 $timthumb = file_text('timthumb.php');
 assert_contains('isSafeRemoteHost', $timthumb, 'TimThumb should validate remote hosts against private/reserved IPs.');
